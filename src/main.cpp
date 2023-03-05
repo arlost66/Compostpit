@@ -247,7 +247,7 @@ void turning_automation()//should not be activated within the first day
 
   if(turn_mode == 1)
   {//|| startingTime + (86400 * 6) == phtime || startingTime + (86400 * 9) == phtime || startingTime + (86400 * 12) == phtime
-    if(startingTime + (60) <= (long long int)now() && alert_sent_turning[0] == 0 )
+    if(startingTime + (86400 * 3) <= (long long int)now() && alert_sent_turning[0] == 0 )
         {
           Blynk.logEvent("turning_time_event", String("Turn the compost. In the next 9 days in 3 days interval. 1/4 notification"));
           alert_sent_turning[0] = 1;
