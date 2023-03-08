@@ -46,6 +46,7 @@ int ambient_temperature_ID;
 int soil_temperature_ID;
 int gas_sensor_ID;
 int turning_automation_ID;
+int soil_temperature_automation_ID;
 
 //mapping
 int soil_humidity_map;
@@ -55,6 +56,7 @@ int turn_mode;
 
 //alerts flag
 int alert_sent_turning[6] = {0,0,0,0,0,0};
+int soil_temperature_flag[6] = {0,0,0,0,0,0};
 
 
 
@@ -89,6 +91,7 @@ BLYNK_WRITE(V0) //turn on switch
       timer.enable(soil_temperature_ID);
       timer.enable(gas_sensor_ID);
       timer.enable(turning_automation_ID);
+      timer.enable(soil_temperature_automation_ID);
     
     }
     digitalWrite(2, HIGH);
@@ -118,6 +121,7 @@ BLYNK_WRITE(V7)//turn off switch
       timer.disable(soil_temperature_ID);// disabling soil temperature ID
       timer.disable(gas_sensor_ID);
       timer.disable(turning_automation_ID);
+      timer.disable(soil_temperature_automation_ID);
 
       turn_mode = 0; // for the first 12 days of turning
       alert_sent_turning[0] = 0;
@@ -127,6 +131,13 @@ BLYNK_WRITE(V7)//turn off switch
       alert_sent_turning[4] = 0;
       alert_sent_turning[5] = 0;
 
+      soil_temperature_flag[0] = 0;
+      soil_temperature_flag[1] = 0;
+      soil_temperature_flag[2] = 0;
+      soil_temperature_flag[3] = 0;
+      soil_temperature_flag[4] = 0;
+      soil_temperature_flag[5] = 0;
+      
     }
     Blynk.virtualWrite(V0, 0);
   } 
@@ -220,7 +231,6 @@ void gas_sensor()
 
 void turning_automation()//should not be activated within the first day
 {
-  
   //soil  moisture == 40 or 60%
   Serial.println("Automation() in ");
    //setting turning Logic
@@ -262,13 +272,15 @@ void turning_automation()//should not be activated within the first day
     else if(startingTime + (86400 * 9) <= (long long int)now() && alert_sent_turning[2] == 0)
     {
       Blynk.logEvent("turning_time_event", String("Turn the compost. In the next 3 days in 3 days interval. 3/4 notification"));
-      alert_sent_turning[2] = 2;
+      alert_sent_turning[2] = 1;
     }
-    else if(startingTime + (86400 * 12) <= (long long int)now() && alert_sent_turning[4] == 0)
+    else if(startingTime + (86400 * 12) <= (long long int)now() && alert_sent_turning[3] == 0)
     {
       Blynk.logEvent("turning_time_event", String("Turn the compost. The last day of turning. 4/4 notification"));
-      alert_sent_turning[3] = 3;
+      alert_sent_turning[3] = 1;
     }
+
+
   }
   else if(turn_mode == 2 )
   {//|| startingTime + (86400 * 4) == phtime || startingTime + (86400 * 6) == phtime || startingTime + (86400 * 8) == phtime || startingTime + (86400 * 10) == phtime || startingTime + (86400 * 12) == phtime
@@ -303,7 +315,83 @@ void turning_automation()//should not be activated within the first day
         Blynk.logEvent("turning_time_event", String("Turn the compost. The last day of turning. 6/6 notification"));
           alert_sent_turning[5] = 1;
       }  
+
+    
   }
+}
+
+
+void soil_temperature_automation()
+{
+  Serial.println("Soil Temperature automation");
+  // if(startingTime  <= (long long int)now()) //three days
+  // {
+  //   if(soil_temperature_value < 32 && soil_temperature_flag[0] == 0)
+  //   {
+  //     Blynk.logEvent("soil_temperature", String("Add green or Nitrogen rich material as the soil temperature is Low."));
+  //     Serial.println("After three days LOG SENT");
+  //     //close vent
+  //     soil_temperature_flag[0] = 1;
+  //   }
+  //   else if(soil_temperature_value >= 32 && soil_temperature_flag[0] == 1)
+  //   {
+  //     Blynk.logEvent("soil_temperature", String("Compost is in good temperature"));
+  //     Serial.println("Temperature is back to optimal temperature");
+  //     soil_temperature_flag[0] == 0;
+  //   }
+  //                //   //
+  // }
+  //else if(startingTime  >= (long long int)now() && startingTime  + (86400 * 4)<= (long long int)now())
+ // else if(startingTime+(86400 * 20) >= (long long int) now() && startingTime  + (86400 * 4)<= (long long int)now())
+
+Serial.println("temp" + String(soil_temperature_value));
+  if(startingTime <= (long long int) now())
+  {
+    if(soil_temperature_value >= 32 && soil_temperature_value < 60 && soil_temperature_flag[1] == 0 )
+    {
+      Blynk.logEvent("soil_temperature", String("Compost is in Optimal Temperature"));
+      Serial.println("After three days LOG SENT optimal");
+      soil_temperature_flag[1] = 1;
+      soil_temperature_flag[2] = 0;
+      soil_temperature_flag[3] = 0;
+      soil_temperature_flag[4] = 0;
+      //close vents
+    }
+
+    else if(soil_temperature_value < 32 && soil_temperature_flag[2] == 0)
+    {
+      Blynk.logEvent("soil_temperature", String("Compost is below Optimal temperature please add green or nitrogen rich material"));
+      Serial.println("less than 25 days and 4th day");
+      soil_temperature_flag[2] = 1;
+      soil_temperature_flag[1] = 0;
+      soil_temperature_flag[3] = 0;
+      soil_temperature_flag[4] = 0;
+      //close vents
+    }
+    else if(soil_temperature_value > 59 && soil_temperature_value < 71 && soil_temperature_flag[3] == 0)
+    {
+      Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature."));
+      soil_temperature_flag[3] = 1;
+      soil_temperature_flag[2] = 0;
+      soil_temperature_flag[1] = 0;
+      soil_temperature_flag[4] = 0;
+      Serial.println("Overheating");
+      //open vents;
+    }
+    
+    else if(soil_temperature_value >= 72 && soil_humidity_value < 79 && soil_temperature_flag[4] == 0)
+    {
+      Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature. System will Add water"));
+      soil_temperature_flag[4] = 1;
+      soil_temperature_flag[3] = 0;
+      soil_temperature_flag[2] = 0;
+      soil_temperature_flag[1] = 0;
+      Serial.println("Compost is in excessive temperature. System will Add water");
+      //add water;
+    }
+  }
+  
+  
 }
 
 BLYNK_CONNECTED()
@@ -331,6 +419,7 @@ void setup() {
   soil_temperature_ID = timer.setInterval(2000L, soil_temperature);
   gas_sensor_ID = timer.setInterval(4000L, gas_sensor);
   turning_automation_ID = timer.setInterval(30000L, turning_automation);
+  soil_temperature_automation_ID = timer.setInterval(2300L, soil_temperature_automation);
 
   Serial.begin(115200);
 
