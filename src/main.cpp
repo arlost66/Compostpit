@@ -13,6 +13,7 @@
 #define BLYNK_PRINT Serial
 #define APP_DEBUG
 
+#define USE_NODE_MCU_BOARD
 
 #define soil_humidity_pin A0 //v2
 #define ambient_temperature_pin D2 //v3
@@ -23,6 +24,11 @@
 #define dc_motor_pin D6
 
 #define switch_pin 10 //SD3
+
+int  dc_state;
+//led pin is relay pin of servo motor
+int switchNew;
+int switchOld; //put on timer
 
 #define DHTTYPE DHT22
 
@@ -82,6 +88,27 @@ int soil_temperature_flag[7] = {0,0,0,0,0,0,0};
 int soil_humidity_flag[6] = {0,0,0,0,0,0};
 int gas_flag[2] = {0,0};
 
+// void switchDC()
+// {
+//   switchNew = digitalRead(switch_pin);
+//   if(switchOld == 0 && switchNew == 1)
+//   {
+//     if(dc_state == 0)
+//     {
+//       digitalWrite(servo_motor_pin, HIGH);
+//       dc_state = 1;
+//       Serial.println("ON");
+//     }
+//     else
+//     {
+//       digitalWrite(servo_motor_pin, LOW);
+//       dc_state = 0;
+//       Serial.println("OFF");
+//     }
+//   }
+//   switchOld = switchNew;
+// }
+
 BLYNK_WRITE(InternalPinRTC) {   //check the value of InternalPinRTC  
   phtime = param.asLong();
   setTime(phtime);
@@ -92,7 +119,8 @@ BLYNK_WRITE(V0) //turn on switch
   switchStart = param.asInt();
   if(switchStart == 1)
   {
-    if(startingTime == 0){
+    if(startingTime == 0)
+    {
       startingTime = phtime;
       Serial.println("Starting TIme unix: " + String(phtime));
       Serial.println("Starting time: " + String(startingTime));
@@ -100,10 +128,13 @@ BLYNK_WRITE(V0) //turn on switch
 
       startingTimeString = String(day(startingTime)) + "/"+String(month(startingTime)) +"/"+ String(year(startingTime));
       endTimeString = String(day(startingTime + (86400 * 36))) + "/" + String(month(startingTime + (86400 * 36))) + "/" + String(year(startingTime + (86400*36)));
-      Serial.println("All timer on " + String(year()));
+      
+      if(Blynk.connected() != 0)
+          {
       Blynk.virtualWrite(V5,startingTimeString); // sends string in V5
       Blynk.virtualWrite(V6, startingTime); //UNIX value in longlong
       Blynk.virtualWrite(V9, endTimeString);
+          }
 
       Serial.println("LOG SENT");
      // Blynk.logEvent("turning_time_event", String("V1 notification log"));
@@ -120,24 +151,36 @@ BLYNK_WRITE(V0) //turn on switch
       timer.enable(turning_automation_ID);
       timer.enable(soil_temperature_automation_ID);
       timer.enable(soil_moisture_automation_ID);
+      timer.disable(reenable_ID);
     }
-    else{
+     else if(startingTime != 0 )
+    {
+       Serial.println("TURN ON");
+
+      timer.restartTimer(soil_humidity_ID);
+      timer.restartTimer(ambient_temperature_ID);
+      timer.restartTimer(soil_temperature_ID);
+      timer.restartTimer(gas_sensor_ID);
+
       timer.enable(soil_temperature_automation_ID);
       timer.enable(soil_moisture_automation_ID);
       timer.enable(turning_automation_ID);
-      timer.disable(reenable_ID);
-      Serial.println("Automation is Re enabled");
+       
+       timer.disable(reenable_ID);
+    }
+   // digitalWrite(2, HIGH);
+    if(Blynk.connected() != 0)
+    {
+      Blynk.virtualWrite(V7, 0); // sets end switch to zero
     }
     
-    digitalWrite(2, HIGH);
+    Serial.println("All timer on " + String(timer.isEnabled(soil_moisture_automation_ID)));
+  } 
    // Serial.println("date "+ String(startingTime) + "\n phtime: " + String(now()) );
-    Blynk.virtualWrite(V7, 0); // sets end switch to zero
-    
-  }
-  else if(switchEnd == 0)
+  else if(switchStart == 0)
   {
-      //temp = now();
-     // Serial.println("Temp = switchEnd" + String(temp));
+     if(startingTime != 0)
+     {
       timer.restartTimer(soil_humidity_ID);
       timer.restartTimer(ambient_temperature_ID);
       timer.restartTimer(soil_temperature_ID);
@@ -149,10 +192,12 @@ BLYNK_WRITE(V0) //turn on switch
       timer.disable(soil_moisture_automation_ID);
       timer.disable(turning_automation_ID);
       timer.enable(reenable_ID);
-      Serial.println("Automation is disabled but monitoring is still ongoing");
+      Serial.println(" Switch Automation is disabled but monitoring is still ongoing" + String(timer.isEnabled(soil_moisture_automation_ID)) );
 
-    digitalWrite(2, LOW);
+      //digitalWrite(2, LOW);
+     }
   }
+  
 }
 
 BLYNK_WRITE(V7)//turn off switch
@@ -164,10 +209,13 @@ BLYNK_WRITE(V7)//turn off switch
       //Blynk.virtualWrite(V0, 0);
       startingTime = 0;
       startingTimeString ="Not Started";
-      endTimeString ="";
+      endTimeString =" ";
+      if(Blynk.connected() != 0)
+          {
       Blynk.virtualWrite(V5,startingTimeString); // sends string in V5
       Blynk.virtualWrite(V6, startingTime); //UNIX value in longlong
       Blynk.virtualWrite(V9, endTimeString);
+          }
 
       timer.disable(soil_humidity_ID); //disabling timer for soil humidty
       timer.disable(ambient_temperature_ID); //disabling ambient_temperature ID
@@ -201,7 +249,10 @@ BLYNK_WRITE(V7)//turn off switch
       gas_flag[1] = 0;
 
     }
+    if(Blynk.connected() != 0)
+          {
     Blynk.virtualWrite(V0, 0);
+          }
   } 
 }
 
@@ -244,8 +295,12 @@ void soil_humidity() //check mapping
   //turn off ang sensor kung possible
   soil_humidity_value = analogRead(soil_humidity_pin);
   soil_humidity_map = map(soil_humidity_value, 0, 1023, 100, 0);
-  Blynk.virtualWrite(V2, soil_humidity_map);
+  if(Blynk.connected() != 0)
+          {
+           Blynk.virtualWrite(V2, soil_humidity_map);
+          }
   //Serial.println("Soil Humidity: " + String(soil_humidity_map));
+  Serial.println("S Automation is disabled but monitoring is still ongoing" + String(timer.isEnabled(soil_moisture_automation_ID)) + String(timer.isEnabled(soil_temperature_automation_ID)) + String(timer.isEnabled(turning_automation_ID)) );
 }
 
 void ambient_temperature()
@@ -262,7 +317,10 @@ void ambient_temperature()
     Serial.println("Failed to read from DHT sensor");
   }
   else{
+    if(Blynk.connected() != 0)
+          {
     Blynk.virtualWrite(V3,ambient_temperature_value );
+          }
   Serial.println("DHT: " + String(ambient_temperature_value));
   }
 }
@@ -271,7 +329,11 @@ void soil_temperature()
 {
   sensors.requestTemperatures();
   soil_temperature_value = sensors.getTempCByIndex(0);
-  Blynk.virtualWrite(V1, soil_temperature_value);
+  if(Blynk.connected() != 0)
+          {
+            Blynk.virtualWrite(V1, soil_temperature_value);
+          }
+  
   if (soil_temperature_value != DEVICE_DISCONNECTED_C)
   {
    Serial.println("Soil Temperature: " + String(soil_temperature_value));
@@ -291,6 +353,7 @@ void gas_sensor()
     
     if(gas_flag[0] == 0)
     {
+      
       Serial.println("Methane gas not detected");
       gas_flag[0] = 1;
       gas_flag[1] = 0;
@@ -301,20 +364,30 @@ void gas_sensor()
   {
     if(gas_flag[1] == 0)
     {
+      if(Blynk.connected() != 0)
+          {
       Serial.println("Methane gas detected");
       Blynk.logEvent("info", String("Methane is detected. Mix your compost asap."));
       gas_flag[0] = 0;
       gas_flag[1] = 1;
+          }
     }
   }
 
   if (gas_sensor_value == 1)
   {
-    Blynk.virtualWrite(V4, 0);
+    if(Blynk.connected() != 0)
+          {
+             Blynk.virtualWrite(V4, 0);
+          }
+   
   }
   else if(gas_sensor_value == 0)
   {
+    if(Blynk.connected() != 0)
+          {
     Blynk.virtualWrite(V4, 1);
+          }
   }
   
 
@@ -377,12 +450,21 @@ void turning_automation()//should not be activated within the first day
   Serial.println("Alert sent turning: " + String(alert_sent_turning[0]));
   if(turn_mode == 1)
   {//|| startingTime + (86400 * 6) == phtime || startingTime + (86400 * 9) == phtime || startingTime + (86400 * 12) == phtime
-    if(startingTime + (86400 * 3) <= (long long int)now())
+
+          Serial.println("Starting Time: " + String(startingTime));
+          Serial.println("Starting Time: " + String((long long int)now()));
+
+    if(startingTime + (86400 * 3) <= (long long int)now() )
         {
+          
           if(alert_sent_turning[0] == 0)
           {
-            Blynk.logEvent("info", String("Turn the compost. In the next 9 days in 3 days interval. 1/4 notification"));
-            alert_sent_turning[0] = 1;
+            if(Blynk.connected() != 0)
+            {
+               Blynk.logEvent("info", String("Turn the compost. In the next 9 days in 3 days interval. 1/4 notification"));
+               alert_sent_turning[0] = 1;
+            }
+            
           }
           Serial.println("Sent status True: ");
           //notify for turning
@@ -391,24 +473,34 @@ void turning_automation()//should not be activated within the first day
        {
         if(alert_sent_turning[1] == 0)
         {
-          Blynk.logEvent("info", String("Turn the compost. In the next 6 days in 3 days interval. 2/4 notification"));
-          alert_sent_turning[1] = 1;
+          if(Blynk.connected() != 0)
+          {
+            Blynk.logEvent("info", String("Turn the compost. In the next 6 days in 3 days interval. 2/4 notification"));
+            alert_sent_turning[1] = 1;
+          }
+          
         }
        }
     else if(startingTime + (86400 * 9) <= (long long int)now())
     {
       if(alert_sent_turning[2] == 0)
       {
+        if(Blynk.connected() != 0)
+          {
        Blynk.logEvent("info", String("Turn the compost. In the next 3 days in 3 days interval. 3/4 notification"));
        alert_sent_turning[2] = 1;
+          }
       }
     } 
     else if(startingTime + (86400 * 12) <= (long long int)now())
     {
       if(alert_sent_turning[3] == 0)
       {
+        if(Blynk.connected() != 0)
+          {
         Blynk.logEvent("info", String("Turn the compost. The last day of turning. 4/4 notification"));
         alert_sent_turning[3] = 1;
+          }
       }
     }
   }
@@ -418,8 +510,11 @@ void turning_automation()//should not be activated within the first day
       {
         if(alert_sent_turning[0] == 0)
         {
+          if(Blynk.connected() != 0)
+          {
           Blynk.logEvent("info", String("Turn the compost. In the next 10 days in 2 days interval. 1/6 notification"));
           alert_sent_turning[0] = 1;
+          }
         }
         
         //notify for turning
@@ -428,8 +523,11 @@ void turning_automation()//should not be activated within the first day
       {
         if(alert_sent_turning[1] == 0)
         {
+          if(Blynk.connected() != 0)
+          {
            Blynk.logEvent("info", String("Turn the compost. In the next 8 days in 2 days interval. 2/6 notification"));
            alert_sent_turning[1] = 1;
+          }
         }
        
       }
@@ -437,8 +535,11 @@ void turning_automation()//should not be activated within the first day
       {
         if(alert_sent_turning[2] == 0)
         {
+          if(Blynk.connected() != 0)
+          {
           Blynk.logEvent("info", String("Turn the compost. In the next 6 days in 2 days interval. 3/6 notification"));
           alert_sent_turning[2] = 1;
+          }
         }
         
       }
@@ -446,16 +547,22 @@ void turning_automation()//should not be activated within the first day
       {
         if (alert_sent_turning[3] == 0)
         {
-         Blynk.logEvent("info", String("Turn the compost. In the next 4 days in 2 days interval. 4/6 notification"));
+          if(Blynk.connected() != 0)
+          {
+          Blynk.logEvent("info", String("Turn the compost. In the next 4 days in 2 days interval. 4/6 notification"));
           alert_sent_turning[3] = 1;
+          }
         }
       }
       else if (startingTime + (86400 * 10) <= (long long int)now() )
       {
         if(alert_sent_turning[4] == 0)
         {
+          if(Blynk.connected() != 0)
+          {
           Blynk.logEvent("info", String("Turn the compost. In the next 2 days in 2 days interval. 5/6 notification"));
           alert_sent_turning[4] = 1;
+          }
         }
        
       }
@@ -463,8 +570,11 @@ void turning_automation()//should not be activated within the first day
       {
         if (alert_sent_turning[5] == 0)
         {
+          if(Blynk.connected() != 0)
+          {
            Blynk.logEvent("info", String("Turn the compost. The last day of turning. 6/6 notification"));
           alert_sent_turning[5] = 1;
+          }
         }
       }  
   }
@@ -474,7 +584,7 @@ void turning_automation()//should not be activated within the first day
 void soil_temperature_automation()
 {
   //Serial.println("Soil Temperature automation");
-  if(startingTime + (86400 * 2) > (long long int)now()) //three days
+  if(startingTime + (86400 * 2) >= (long long int)now()) //three days
   {
     Serial.println("startingTime + (86400 * 2) >= (long long int)now()");
     //temperature
@@ -482,7 +592,9 @@ void soil_temperature_automation()
     {
       if(soil_temperature_flag[0] == 0)
       {
-         Blynk.logEvent("soil_temperature", String ("The temperature is normally low in the few days of composting."));
+        if(Blynk.connected() != 0)
+          {
+          Blynk.logEvent("soil_temperature", String ("The temperature is normally low in the few days of composting."));
           Serial.println("After three days LOG SENT");
           soil_temperature_flag[0] = 1;
           soil_temperature_flag[1] = 0;
@@ -491,14 +603,17 @@ void soil_temperature_automation()
           soil_temperature_flag[4] = 0;
           soil_temperature_flag[5] = 0;
           soil_temperature_flag[6] = 0;
+          }
       }
       //close vent
-      servo_motor("close");
+     servo_motor("close");
     }
     else if(soil_temperature_value >= 32 )
     {
       if(soil_temperature_flag[5] == 0)
       {
+        if(Blynk.connected() != 0)
+          {
         Blynk.logEvent("soil_temperature", String("Compost is in good temperature")); 
         soil_temperature_flag[5] = 1;
         soil_temperature_flag[0] = 0;
@@ -507,6 +622,7 @@ void soil_temperature_automation()
         soil_temperature_flag[3] = 0;
         soil_temperature_flag[4] = 0;
         soil_temperature_flag[6] = 0;
+          }
       }
       
       Serial.println("Temperature is back to optimal temperature");
@@ -516,7 +632,7 @@ void soil_temperature_automation()
      servo_motor("close");
     //soil_humidity
   }
-  else if(startingTime+(86400 * 25) > (long long int) now() && startingTime  + (86400 * 2) < (long long int)now())
+  else if(startingTime+(86400 * 25) >= (long long int) now())
   {
 
     Serial.println("startingTime+(86400 * 25) >= (long long int) now() && startingTime  + (86400 * 3");
@@ -524,6 +640,8 @@ void soil_temperature_automation()
     {
       if(soil_temperature_flag[1] == 0)
       {
+        if(Blynk.connected() != 0)
+          {
           Blynk.logEvent("soil_temperature", String("Compost is in Optimal Temperature"));
           Serial.println("After three days LOG SENT optimal");
            soil_temperature_flag[1] = 1;
@@ -533,14 +651,17 @@ void soil_temperature_automation()
            soil_temperature_flag[0] = 0;
            soil_temperature_flag[5] = 0;
            soil_temperature_flag[6] = 0;
+          }
       }
-      servo_motor("close");
+       servo_motor("close");
       //close vents
     }
     else if(soil_temperature_value < 32 )
     {
       if(soil_temperature_flag[2] == 0)
       {
+        if(Blynk.connected() != 0)
+          {
            if(ambient_temperature_value < soil_temperature_value)
         {
             Blynk.logEvent("soil_temperature", String("Compost is below Optimal temperature. Add Green Materials or Nitrogen rich materials"));
@@ -556,6 +677,7 @@ void soil_temperature_automation()
         soil_temperature_flag[5] = 0;
         soil_temperature_flag[0] = 0;
         soil_temperature_flag[6] = 0;
+      }
       }
       
       servo_motor("close");
@@ -573,8 +695,13 @@ void soil_temperature_automation()
       // {
       //   Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature. Turn the compost"));
       // }
-      if(soil_temperature_flag[3] == 0)
+      if(Blynk.connected() != 0)
+          {
+       if(soil_temperature_flag[3] == 0)
       {
+        if(Blynk.connected() != 0)
+          {
+        Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature. Turn the compost"));
         soil_temperature_flag[3] = 1;
         soil_temperature_flag[2] = 0;
         soil_temperature_flag[1] = 0;
@@ -582,17 +709,21 @@ void soil_temperature_automation()
         soil_temperature_flag[5] = 0;
         soil_temperature_flag[0] = 0;
          soil_temperature_flag[6] = 0;
+         }
       }
+    }
       Serial.println("Overheating");
       //open vents; 
       
-      servo_motor("open");
+     servo_motor("open");
     }
     else if(soil_temperature_value >= 72 && soil_temperature_value < 79)
     {
       if(soil_temperature_flag[4] == 0)
       {
-        Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature.Turn the compost asap. System will Add water if humidity is low"));
+        if(Blynk.connected() != 0)
+          {
+          Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature.Turn the compost asap. System will Add water if humidity is low"));
           soil_temperature_flag[4] = 1;
           soil_temperature_flag[3] = 0;
           soil_temperature_flag[2] = 0;
@@ -600,32 +731,35 @@ void soil_temperature_automation()
           soil_temperature_flag[5] = 0;
           soil_temperature_flag[0] = 0;
           soil_temperature_flag[6] = 0;
+          }
       }
       servo_motor("open");
     }
   }
 
-  else if(startingTime + (86400 * 36) > (long long int) now() && startingTime + (86400 * 26) < (long long int) now())//compost is in curing stage
+  else if(startingTime + (86400 * 36) >= (long long int) now())//compost is in curing stage
   {
      Serial.println("startingTime + (86400 * 36) >= (long long int) now() && startingTime + (86400 * 26) <= (long long int) now()");
     if(soil_temperature_flag[6] == 0)
     {
-      Blynk.logEvent("soil_temperature", String("The Compost is now in curing stage."));
-      soil_temperature_flag[6] = 1;
-       soil_temperature_flag[4] = 0;
+      if(Blynk.connected() != 0)
+          {
+         Blynk.logEvent("soil_temperature", String("The Compost is now in curing stage."));
+          soil_temperature_flag[6] = 1;
+          soil_temperature_flag[4] = 0;
           soil_temperature_flag[3] = 0;
           soil_temperature_flag[2] = 0;
           soil_temperature_flag[1] = 0;
           soil_temperature_flag[5] = 0;
           soil_temperature_flag[0] = 0;
      // water_pump("off");
+          }
     }
   }
 }
 
 //int soil_humidity_flag[6]
 void soil_moisture_automation()
-
 {
   if(soil_humidity_map < 40 )
   {
@@ -640,7 +774,7 @@ void soil_moisture_automation()
     Serial.println("Adding water < 40 soil moisture");
    
     water_pump("on");
-    servo_motor("close");
+   // servo_motor("close");
   }
   else if(soil_humidity_map > 60)
   {
@@ -653,12 +787,10 @@ void soil_moisture_automation()
        soil_humidity_flag[0] = 0;
        soil_humidity_flag[2] = 0; 
     }
-    
     //open vents
-    
-    Serial.println("Opening vents " + String(soil_humidity_map) );
+    Serial.println("Humidity level " + String(soil_humidity_map) );
     water_pump("off");
-    servo_motor("open");
+    //servo_motor("open");
   }
   else if(soil_humidity_map <= 60 && soil_humidity_map >= 40 )
   {
@@ -671,7 +803,7 @@ void soil_moisture_automation()
     }
     Serial.println("Optima Moisture " + String(soil_humidity_map) );
     water_pump("off");
-    servo_motor("close");
+    //servo_motor("close");
   }
 }
 
@@ -684,41 +816,76 @@ void reenable()
       timer.enable(soil_moisture_automation_ID);
       timer.enable(turning_automation_ID);
       timer.disable(reenable_ID);
-      Blynk.virtualWrite(V0, 1);
-      Serial.println("Automation is disabled but monitoring is still ongoing");
+      if(Blynk.connected() != 0)
+          {
+            Blynk.virtualWrite(V0, 1);
+            Serial.println("Reenable Automation is disabled but monitoring is still ongoing");
+          }
     }
 }
 
 int flagShredder[2] = {0,0};
 void shredder()
 {
-  int switchState = digitalRead(switch_pin);
+  // int switchState = digitalRead(switch_pin);
 
-  if(switchState == LOW)
-  {
-    digitalWrite(dc_motor_pin, HIGH);
-    load = 1;
+  // if(switchState == LOW)
+  // {
+  //   digitalWrite(dc_motor_pin, HIGH);
+  //   load = 1;
     
-    if(flagShredder[0] == 0)
-    {
-      Blynk.virtualWrite(V9, load);
-      EEPROM.write(loadAddress, load);
-      flagShredder[0] = 1;
-      flagShredder[1] = 0;
-    }
-  }
-  else 
+  //   if(flagShredder[0] == 0)
+  //   {
+  //     Blynk.virtualWrite(V9, load);
+  //     EEPROM.write(loadAddress, load);
+  //     flagShredder[0] = 1;
+  //     flagShredder[1] = 0;
+  //   }
+  // }
+  // else 
+  // {
+  //   digitalWrite(dc_motor_pin, LOW);
+  //   load = 0;
+  //   if(flagShredder[1] == 0)
+  //   {
+  //     Blynk.virtualWrite(V9, load);
+  //     EEPROM.write(loadAddress, load);
+  //     flagShredder[1] = 1;
+  //     flagShredder[0] = 0;
+  //   }
+  // }
+  BlynkEdgent.run();
+  switchNew = digitalRead(switch_pin);
+  if(switchOld == 0 && switchNew == 1)
   {
-    digitalWrite(dc_motor_pin, LOW);
-    load = 0;
-    if(flagShredder[1] == 0)
+    if(dc_state == 0)
     {
-      Blynk.virtualWrite(V9, load);
-      EEPROM.write(loadAddress, load);
-      flagShredder[1] = 1;
-      flagShredder[0] = 0;
+      digitalWrite(dc_motor_pin, HIGH);
+      dc_state = 1;
+      if(flagShredder[0] == 0)
+     {
+        //Blynk.virtualWrite(V9, load);
+       EEPROM.write(loadAddress, load);
+       flagShredder[0] = 1;
+       flagShredder[1] = 0;
+     }
+      Serial.println("Shredder ON");
+    }
+    else
+    {
+      digitalWrite(dc_motor_pin, LOW);
+      dc_state = 0;
+       if(flagShredder[1] == 0)
+      {
+        //Blynk.virtualWrite(V9, load);
+        EEPROM.write(loadAddress, load);
+       flagShredder[1] = 1;
+        flagShredder[0] = 0;
+       }
+      Serial.println("Shredder OFF");
     }
   }
+  switchOld = switchNew;
   
 }
 
@@ -727,7 +894,7 @@ BLYNK_CONNECTED()
   Blynk.syncAll();
   Blynk.sendInternal("rtc", "sync");
 }
-
+String temp32;
 void recon()
 {
   if (Blynk.connected() == 0 )
@@ -736,15 +903,23 @@ void recon()
   }
   else if(Blynk.connected() == 1)
   {
-    timer.disable(reconnect_ID);
+   // timer.disable(reconnect_ID);
   }
+
+//   if(temp32 == "yes")
+// {
+//   servo_motor("open");
+// }
+// else if( temp32 == "no")
+// {
+//   servo_motor("close");
+// }
     
 }
 
 void setup() {
   // put your setup code here, to run once:
 
-   Serial.begin(115200);
   pinMode(2, OUTPUT); // Initialise digital pin 2 as an output pin
   pinMode(soil_humidity_pin, INPUT);
   pinMode(soil_temperature_pin, INPUT);
@@ -773,52 +948,23 @@ void setup() {
   soil_temperature_automation_ID = timer.setInterval(2300L, soil_temperature_automation);
   soil_moisture_automation_ID = timer.setInterval(2000L, soil_moisture_automation );
   reenable_ID = timer.setInterval(3600000L, reenable); //3600000 1 hour
-   reconnect_ID = timer.setInterval(60000L, recon);
+  reconnect_ID = timer.setInterval(3000L, recon);
+  //timer.setInterval(300L, switchDC);
 
-  shredder_ID = timer.setInterval(1000L, shredder);
+  timer.setInterval(300L, shredder);
   Serial.begin(115200);
 
   dht.begin();//ambient temperature
   sensors.begin();//soil temperature
   BlynkEdgent.begin();
+  BlynkEdgent.run();
 }
 
-String temp32;
+
 void loop() {
   // put your main code here, to run repeatedly:
   //Serial.println("Starting time on loop " + String(startingTime));
 //   timer.run();
 
  timer.run();
- 
-if(Serial.available()){
-        temp32 = Serial.readStringUntil('\n');
-        Serial.print("You typed: " );
-        Serial.println(temp32);
-    }
-
-  if(temp32 == "off")
-  {
-    Blynk.disconnect();
-  }
-  else if(temp32 =="on" && Blynk.connected() == 0)
-  {
-    BlynkEdgent.run();
-  }
-
-  if(startingTime != 0 && Blynk.connected() == 0)
-  {
-    if(timer.isEnabled(reenable_ID) != 1)
-    {
-      timer.enable(reconnect_ID);
-      timer.enable(soil_humidity_ID); //enabling the timer for soil humidity
-      timer.enable(ambient_temperature_ID); //enabling the timer for ambient temperature
-      timer.enable(soil_temperature_ID);
-      timer.enable(gas_sensor_ID);
-      timer.enable(turning_automation_ID);
-      timer.enable(soil_temperature_automation_ID);
-      timer.enable(soil_moisture_automation_ID);
-    }
-  }
- 
 }
