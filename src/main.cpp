@@ -88,26 +88,6 @@ int soil_temperature_flag[7] = {0,0,0,0,0,0,0};
 int soil_humidity_flag[6] = {0,0,0,0,0,0};
 int gas_flag[2] = {0,0};
 
-// void switchDC()
-// {
-//   switchNew = digitalRead(switch_pin);
-//   if(switchOld == 0 && switchNew == 1)
-//   {
-//     if(dc_state == 0)
-//     {
-//       digitalWrite(servo_motor_pin, HIGH);
-//       dc_state = 1;
-//       Serial.println("ON");
-//     }
-//     else
-//     {
-//       digitalWrite(servo_motor_pin, LOW);
-//       dc_state = 0;
-//       Serial.println("OFF");
-//     }
-//   }
-//   switchOld = switchNew;
-// }
 
 BLYNK_WRITE(InternalPinRTC) {   //check the value of InternalPinRTC  
   phtime = param.asLong();
@@ -447,14 +427,15 @@ void turning_automation()//should not be activated within the first day
       turn_mode = 1;
     }
   }
-  Serial.println("Alert sent turning: " + String(alert_sent_turning[0]));
+  Serial.println("Turn_mode = " + String(turn_mode));
+  Serial.println("Alert sent turning: " + String(alert_sent_turning[0]) + String(alert_sent_turning[1]) + String(alert_sent_turning[2]) + String(alert_sent_turning[3]) + String(alert_sent_turning[4]) + String(alert_sent_turning[5]));
   if(turn_mode == 1)
   {//|| startingTime + (86400 * 6) == phtime || startingTime + (86400 * 9) == phtime || startingTime + (86400 * 12) == phtime
 
           Serial.println("Starting Time: " + String(startingTime));
           Serial.println("Starting Time: " + String((long long int)now()));
-
-    if(startingTime + (86400 * 3) <= (long long int)now() )
+          Serial.println("Starting Time: " + String(startingTime + (86400 * 3)));
+    if(startingTime + (86400 * 3) >= (long long int)now() )
         {
           
           if(alert_sent_turning[0] == 0)
@@ -466,10 +447,10 @@ void turning_automation()//should not be activated within the first day
             }
             
           }
-          Serial.println("Sent status True: ");
+          Serial.println("Day3");
           //notify for turning
         }
-    else if(startingTime + (86400 * 6) <= (long long int)now())
+    else if(startingTime + (86400 * 6) >= (long long int)now())
        {
         if(alert_sent_turning[1] == 0)
         {
@@ -479,9 +460,10 @@ void turning_automation()//should not be activated within the first day
             alert_sent_turning[1] = 1;
           }
           
-        }
+        
+        Serial.println("Day 6");
        }
-    else if(startingTime + (86400 * 9) <= (long long int)now())
+    else if(startingTime + (86400 * 9) >= (long long int)now())
     {
       if(alert_sent_turning[2] == 0)
       {
@@ -491,8 +473,9 @@ void turning_automation()//should not be activated within the first day
        alert_sent_turning[2] = 1;
           }
       }
+      Serial.println("Day 9");
     } 
-    else if(startingTime + (86400 * 12) <= (long long int)now())
+    else if(startingTime + (86400 * 12) >= (long long int)now())
     {
       if(alert_sent_turning[3] == 0)
       {
@@ -502,11 +485,16 @@ void turning_automation()//should not be activated within the first day
         alert_sent_turning[3] = 1;
           }
       }
+      Serial.println("Day 12");
+    }
+    else
+    {
+      Serial.println("done");
     }
   }
   else if(turn_mode == 2 )
   {//|| startingTime + (86400 * 4) == phtime || startingTime + (86400 * 6) == phtime || startingTime + (86400 * 8) == phtime || startingTime + (86400 * 10) == phtime || startingTime + (86400 * 12) == phtime
-     if(startingTime + (86400 * 2) <= (long long int)now()  )
+     if(startingTime + (86400 * 2) >= (long long int)now()  )
       {
         if(alert_sent_turning[0] == 0)
         {
@@ -516,10 +504,10 @@ void turning_automation()//should not be activated within the first day
           alert_sent_turning[0] = 1;
           }
         }
-        
+        Serial.println("Day 2");
         //notify for turning
       }   
-      else if(startingTime + (86400 * 4) <= (long long int)now() )
+      else if(startingTime + (86400 * 4) >= (long long int)now() )
       {
         if(alert_sent_turning[1] == 0)
         {
@@ -529,9 +517,9 @@ void turning_automation()//should not be activated within the first day
            alert_sent_turning[1] = 1;
           }
         }
-       
+       Serial.println("Day  4");
       }
-      else if(startingTime + (86400 * 6) <= (long long int)now()  )
+      else if(startingTime + (86400 * 6) >= (long long int)now()  )
       {
         if(alert_sent_turning[2] == 0)
         {
@@ -541,9 +529,9 @@ void turning_automation()//should not be activated within the first day
           alert_sent_turning[2] = 1;
           }
         }
-        
+        Serial.println("Day 6");
       }
-      else if (startingTime + (86400 * 8) <= (long long int)now() )
+      else if (startingTime + (86400 * 8) >= (long long int)now() )
       {
         if (alert_sent_turning[3] == 0)
         {
@@ -552,9 +540,10 @@ void turning_automation()//should not be activated within the first day
           Blynk.logEvent("info", String("Turn the compost. In the next 4 days in 2 days interval. 4/6 notification"));
           alert_sent_turning[3] = 1;
           }
+          Serial.println("Day 8");
         }
       }
-      else if (startingTime + (86400 * 10) <= (long long int)now() )
+      else if (startingTime + (86400 * 10) >= (long long int)now() )
       {
         if(alert_sent_turning[4] == 0)
         {
@@ -564,9 +553,9 @@ void turning_automation()//should not be activated within the first day
           alert_sent_turning[4] = 1;
           }
         }
-       
+       Serial.println("Day 10");
       }
-      else if (startingTime + (86400 * 12) <= (long long int)now() )
+      else if (startingTime + (86400 * 12) >= (long long int)now() )
       {
         if (alert_sent_turning[5] == 0)
         {
@@ -576,10 +565,14 @@ void turning_automation()//should not be activated within the first day
           alert_sent_turning[5] = 1;
           }
         }
+        Serial.println("Day 12");
       }  
+      else{
+        Serial.println("TURN 2 else");
+      }
   }
 }
-
+}
 
 void soil_temperature_automation()
 {
@@ -606,7 +599,6 @@ void soil_temperature_automation()
           }
       }
       //close vent
-     servo_motor("close");
     }
     else if(soil_temperature_value >= 32 )
     {
@@ -628,10 +620,8 @@ void soil_temperature_automation()
       Serial.println("Temperature is back to optimal temperature");
      
     }
-    // water_pump("off");
-     servo_motor("close");
-    //soil_humidity
   }
+
   else if(startingTime+(86400 * 25) >= (long long int) now())
   {
 
@@ -653,7 +643,6 @@ void soil_temperature_automation()
            soil_temperature_flag[6] = 0;
           }
       }
-       servo_motor("close");
       //close vents
     }
     else if(soil_temperature_value < 32 )
@@ -664,11 +653,11 @@ void soil_temperature_automation()
           {
            if(ambient_temperature_value < soil_temperature_value)
         {
-            Blynk.logEvent("soil_temperature", String("Compost is below Optimal temperature. Add Green Materials or Nitrogen rich materials"));
+           // Blynk.logEvent("soil_temperature", String("Compost is below Optimal temperature. Add Green Materials or Nitrogen rich materials"));
        }
         else if(soil_temperature_value > ambient_temperature_value)
        {
-            Blynk.logEvent("soil_temperature", String("Compost is below Optimal temperature."));
+            Blynk.logEvent("soil_temperature", String("Compost is below Optimal temperature. Add Green Materials or Nitrogen rich materials"));
         }
         soil_temperature_flag[2] = 1;
         soil_temperature_flag[1] = 0;
@@ -678,23 +667,11 @@ void soil_temperature_automation()
         soil_temperature_flag[0] = 0;
         soil_temperature_flag[6] = 0;
       }
-      }
-      
-      servo_motor("close");
+      }  
     }
-    else if(soil_temperature_value > 59 && soil_temperature_value < 71  )
+    else if(soil_temperature_value > 59 )
     {
-     // 
-      // if(soil_humidity_value < 55)
-      // {
-      //   Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature. System is Adding water"));
-      //   water_pump("on");
-
-      // }
-      // else
-      // {
-      //   Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature. Turn the compost"));
-      // }
+     
       if(Blynk.connected() != 0)
           {
        if(soil_temperature_flag[3] == 0)
@@ -713,28 +690,8 @@ void soil_temperature_automation()
       }
     }
       Serial.println("Overheating");
-      //open vents; 
-      
-     servo_motor("open");
     }
-    else if(soil_temperature_value >= 72 && soil_temperature_value < 79)
-    {
-      if(soil_temperature_flag[4] == 0)
-      {
-        if(Blynk.connected() != 0)
-          {
-          Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature.Turn the compost asap. System will Add water if humidity is low"));
-          soil_temperature_flag[4] = 1;
-          soil_temperature_flag[3] = 0;
-          soil_temperature_flag[2] = 0;
-          soil_temperature_flag[1] = 0;
-          soil_temperature_flag[5] = 0;
-          soil_temperature_flag[0] = 0;
-          soil_temperature_flag[6] = 0;
-          }
-      }
-      servo_motor("open");
-    }
+    
   }
 
   else if(startingTime + (86400 * 36) >= (long long int) now())//compost is in curing stage
@@ -756,6 +713,16 @@ void soil_temperature_automation()
           }
     }
   }
+
+  if(soil_temperature_value >= 40)
+  {
+    servo_motor("open");
+
+  }
+  else
+  {
+    servo_motor("close");
+  }
 }
 
 //int soil_humidity_flag[6]
@@ -774,7 +741,6 @@ void soil_moisture_automation()
     Serial.println("Adding water < 40 soil moisture");
    
     water_pump("on");
-   // servo_motor("close");
   }
   else if(soil_humidity_map > 60)
   {
@@ -790,7 +756,6 @@ void soil_moisture_automation()
     //open vents
     Serial.println("Humidity level " + String(soil_humidity_map) );
     water_pump("off");
-    //servo_motor("open");
   }
   else if(soil_humidity_map <= 60 && soil_humidity_map >= 40 )
   {
@@ -803,7 +768,7 @@ void soil_moisture_automation()
     }
     Serial.println("Optima Moisture " + String(soil_humidity_map) );
     water_pump("off");
-    //servo_motor("close");
+    
   }
 }
 
@@ -906,14 +871,7 @@ void recon()
    // timer.disable(reconnect_ID);
   }
 
-//   if(temp32 == "yes")
-// {
-//   servo_motor("open");
-// }
-// else if( temp32 == "no")
-// {
-//   servo_motor("close");
-// }
+
     
 }
 
@@ -952,7 +910,7 @@ void setup() {
   //timer.setInterval(300L, switchDC);
 
   timer.setInterval(300L, shredder);
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   dht.begin();//ambient temperature
   sensors.begin();//soil temperature
