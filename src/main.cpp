@@ -4,7 +4,7 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <Servo.h>
-#include <ESP8266WiFi.h>
+//#include <ESP8266WiFi.h>
 
 
 #define BLYNK_TEMPLATE_ID "TMPLrF3QZtDg"
@@ -16,14 +16,14 @@
 #define USE_NODE_MCU_BOARD
 
 #define soil_humidity_pin A0 //v2
-#define ambient_temperature_pin D2 //v3
-#define soil_temperature_pin D1 //v1
+#define ambient_temperature_pin D4 //v3
+#define soil_temperature_pin D2 //v1
 #define gas_sensor_pin D5
 #define water_pump_pin D7
-#define servo_motor_pin D4
+#define servo_motor_pin D1
 #define dc_motor_pin D6
 
-#define switch_pin 10 //SD3
+#define switch_pin D8 //SD3
 
 int  dc_state;
 //led pin is relay pin of servo motor
@@ -678,7 +678,7 @@ void soil_temperature_automation()
       {
         if(Blynk.connected() != 0)
           {
-        Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature. Turn the compost"));
+        Blynk.logEvent("soil_temperature", String("Compost is in excessive temperature. Turn the compost or Add Carbon/Brown Materials"));
         soil_temperature_flag[3] = 1;
         soil_temperature_flag[2] = 0;
         soil_temperature_flag[1] = 0;
@@ -714,14 +714,16 @@ void soil_temperature_automation()
     }
   }
 
-  if(soil_temperature_value >= 45 || ambient_temperature_value > 35)
+  if(soil_temperature_value >= 60 || ambient_temperature_value >= 35)
   {
     servo_motor("open");
+    Serial.println("OPEN SERVO ON TEMP");
 
   }
   else
   {
     servo_motor("close");
+    Serial.println("CLOSE SERVO ON TEMP");
   }
 }
 
@@ -792,33 +794,6 @@ void reenable()
 int flagShredder[2] = {0,0};
 void shredder()
 {
-  // int switchState = digitalRead(switch_pin);
-
-  // if(switchState == LOW)
-  // {
-  //   digitalWrite(dc_motor_pin, HIGH);
-  //   load = 1;
-    
-  //   if(flagShredder[0] == 0)
-  //   {
-  //     Blynk.virtualWrite(V9, load);
-  //     EEPROM.write(loadAddress, load);
-  //     flagShredder[0] = 1;
-  //     flagShredder[1] = 0;
-  //   }
-  // }
-  // else 
-  // {
-  //   digitalWrite(dc_motor_pin, LOW);
-  //   load = 0;
-  //   if(flagShredder[1] == 0)
-  //   {
-  //     Blynk.virtualWrite(V9, load);
-  //     EEPROM.write(loadAddress, load);
-  //     flagShredder[1] = 1;
-  //     flagShredder[0] = 0;
-  //   }
-  // }
   BlynkEdgent.run();
   switchNew = digitalRead(switch_pin);
   if(switchOld == 0 && switchNew == 1)
@@ -878,7 +853,7 @@ void recon()
 void setup() {
   // put your setup code here, to run once:
 
-  pinMode(2, OUTPUT); // Initialise digital pin 2 as an output pin
+  //pinMode(2, OUTPUT); // Initialise digital pin 2 as an output pin
   pinMode(soil_humidity_pin, INPUT);
   pinMode(soil_temperature_pin, INPUT);
   pinMode(ambient_temperature_pin, INPUT);
@@ -916,6 +891,7 @@ void setup() {
   sensors.begin();//soil temperature
   BlynkEdgent.begin();
   BlynkEdgent.run();
+  myservo.write(0);
 }
 
 
@@ -923,6 +899,10 @@ void loop() {
   // put your main code here, to run repeatedly:
   //Serial.println("Starting time on loop " + String(startingTime));
 //   timer.run();
+  // myservo.write(180);
+  // delay(1000);
+  // myservo.write(0);
+  // delay(1000);
 
  timer.run();
 }
