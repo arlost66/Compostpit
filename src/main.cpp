@@ -714,7 +714,7 @@ void soil_temperature_automation()
     }
   }
 
-  if(soil_temperature_value >= 40)
+  if(soil_temperature_value >= 45 || ambient_temperature_value > 35)
   {
     servo_motor("open");
 
