@@ -794,7 +794,7 @@ void reenable()
 int flagShredder[2] = {0,0};
 void shredder()
 {
-  BlynkEdgent.run();
+  //BlynkEdgent.run();
   switchNew = digitalRead(switch_pin);
   if(switchOld == 0 && switchNew == 1)
   {
@@ -843,7 +843,7 @@ void recon()
   }
   else if(Blynk.connected() == 1)
   {
-   // timer.disable(reconnect_ID);
+   BlynkEdgent.run();
   }
 
 
