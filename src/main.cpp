@@ -265,7 +265,20 @@ BLYNK_WRITE(V5)
 BLYNK_WRITE(V8)
 {
   load = param.asInt();
-  digitalWrite(dc_motor_pin, load);
+
+  if(load == 1)
+  {
+    digitalWrite(dc_motor_pin, 1);
+    dc_state = 1;
+    Blynk.virtualWrite(V8, 1);
+  }
+  else
+  {
+    digitalWrite(dc_motor_pin, 0);
+    dc_state = 0;
+    Blynk.virtualWrite(V8, 0);
+  }
+  
 }
 
 //functions
@@ -274,7 +287,8 @@ void soil_humidity() //check mapping
 {
   //turn off ang sensor kung possible
   soil_humidity_value = analogRead(soil_humidity_pin);
-  soil_humidity_map = map(soil_humidity_value, 0, 1023, 100, 0);
+  Serial.println(soil_humidity_value);
+  soil_humidity_map = map(soil_humidity_value, 629, 1023, 100,0);
   if(Blynk.connected() != 0)
           {
            Blynk.virtualWrite(V2, soil_humidity_map);
@@ -709,7 +723,7 @@ void soil_temperature_automation()
           soil_temperature_flag[1] = 0;
           soil_temperature_flag[5] = 0;
           soil_temperature_flag[0] = 0;
-     // water_pump("off");
+     
           }
     }
   }
@@ -804,7 +818,7 @@ void shredder()
       dc_state = 1;
       if(flagShredder[0] == 0)
      {
-        //Blynk.virtualWrite(V9, load);
+       Blynk.virtualWrite(V8, dc_state);
        EEPROM.write(loadAddress, load);
        flagShredder[0] = 1;
        flagShredder[1] = 0;
@@ -817,7 +831,7 @@ void shredder()
       dc_state = 0;
        if(flagShredder[1] == 0)
       {
-        //Blynk.virtualWrite(V9, load);
+        Blynk.virtualWrite(V8, dc_state);
         EEPROM.write(loadAddress, load);
        flagShredder[1] = 1;
         flagShredder[0] = 0;
