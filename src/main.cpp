@@ -87,6 +87,7 @@ int alert_sent_turning[6] = {0,0,0,0,0,0};
 int soil_temperature_flag[7] = {0,0,0,0,0,0,0};
 int soil_humidity_flag[6] = {0,0,0,0,0,0};
 int gas_flag[2] = {0,0};
+int status_flag[3] ={0,0,0};
 
 
 BLYNK_WRITE(InternalPinRTC) {   //check the value of InternalPinRTC  
@@ -195,6 +196,7 @@ BLYNK_WRITE(V7)//turn off switch
       Blynk.virtualWrite(V5,startingTimeString); // sends string in V5
       Blynk.virtualWrite(V6, startingTime); //UNIX value in longlong
       Blynk.virtualWrite(V9, endTimeString);
+      Blynk.virtualWrite(V10, "Not started");
           }
 
       timer.disable(soil_humidity_ID); //disabling timer for soil humidty
@@ -228,6 +230,9 @@ BLYNK_WRITE(V7)//turn off switch
       gas_flag[0] = 0;
       gas_flag[1] = 0;
 
+      status_flag[0] = 0;
+      status_flag[1] = 0;
+      status_flag[2] = 0;
     }
     if(Blynk.connected() != 0)
           {
@@ -424,17 +429,17 @@ void turning_automation()//should not be activated within the first day
  // Serial.println("Starting Time: " + String(startingTime) + "\n PHTIME: " + String((long long int)now()));
   if(startingTime + (86400 * 1) >= (long long int)now() && turn_mode == 0)
   {
-    if(soil_humidity_value >= 40 || soil_humidity_value < 60  )
+    if(soil_humidity_map >= 40 || soil_humidity_map < 60  )
     { //86400 == 1 day seconds
       turn_mode = 1;
       Serial.println("Turn_mode = 1");
     }
-    else if(soil_humidity_value >= 60 || soil_humidity_value < 70)
+    else if(soil_humidity_map >= 60 || soil_humidity_map < 70)
     {
       turn_mode = 2;
       Serial.println("Turn_mode = 2");
     }
-    else if( soil_humidity_value < 40)
+    else if( soil_humidity_map < 40)
     {
       //activate water pump
       //Serial.println("Activate water pump before setting turn mode into 1;");
@@ -588,6 +593,7 @@ void turning_automation()//should not be activated within the first day
 }
 }
 
+
 void soil_temperature_automation()
 {
   //Serial.println("Soil Temperature automation");
@@ -595,6 +601,14 @@ void soil_temperature_automation()
   {
     Serial.println("startingTime + (86400 * 2) >= (long long int)now()");
     //temperature
+    if(status_flag[0] == 0)
+      {
+        Blynk.virtualWrite(V10, "Moderate-temperature Phase");
+        status_flag[0] = 1;
+        status_flag[1] = 0;
+        status_flag[2] = 0;
+      }
+
     if(soil_temperature_value < 32  )
     {
       if(soil_temperature_flag[0] == 0)
@@ -638,7 +652,13 @@ void soil_temperature_automation()
 
   else if(startingTime+(86400 * 25) >= (long long int) now())
   {
-
+    if(status_flag[1] == 0)
+      {
+        Blynk.virtualWrite(V10, "High temperature Phase");
+        status_flag[1] = 1;
+        status_flag[0] = 0;
+        status_flag[2] = 0;
+      }
     Serial.println("startingTime+(86400 * 25) >= (long long int) now() && startingTime  + (86400 * 3");
     if(soil_temperature_value >= 32 && soil_temperature_value < 60  )
     {
@@ -660,7 +680,7 @@ void soil_temperature_automation()
       //close vents
     }
     else if(soil_temperature_value < 32 )
-    {
+    { 
       if(soil_temperature_flag[2] == 0)
       {
         if(Blynk.connected() != 0)
@@ -708,8 +728,15 @@ void soil_temperature_automation()
     
   }
 
-  else if(startingTime + (86400 * 36) >= (long long int) now())//compost is in curing stage
+  else if(startingTime + (86400 * 25) < (long long int) now())//compost is in curing stage
   {
+    if(status_flag[2] == 0)
+      {
+        Blynk.virtualWrite(V10, "Curing Phase");
+        status_flag[2] = 1;
+        status_flag[1] = 0;
+        status_flag[0] = 0;
+      }
      Serial.println("startingTime + (86400 * 36) >= (long long int) now() && startingTime + (86400 * 26) <= (long long int) now()");
     if(soil_temperature_flag[6] == 0)
     {
