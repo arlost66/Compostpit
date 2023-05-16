@@ -93,6 +93,7 @@ int status_flag[3] ={0,0,0};
 BLYNK_WRITE(InternalPinRTC) {   //check the value of InternalPinRTC  
   phtime = param.asLong();
   setTime(phtime);
+  //Serial.println(phti)
 }
 
 BLYNK_WRITE(V0) //turn on switch
@@ -181,6 +182,14 @@ BLYNK_WRITE(V0) //turn on switch
   
 }
 
+void delete_input_sensor()
+{
+  Blynk.virtualWrite(V1, 0);
+  Blynk.virtualWrite(V2, 0);
+  Blynk.virtualWrite(V3, 0);
+  Blynk.virtualWrite(V4, 0);
+}
+
 BLYNK_WRITE(V7)//turn off switch
 {
   switchEnd = param.asInt();
@@ -199,6 +208,8 @@ BLYNK_WRITE(V7)//turn off switch
       Blynk.virtualWrite(V10, "Not started");
           }
 
+      
+
       timer.disable(soil_humidity_ID); //disabling timer for soil humidty
       timer.disable(ambient_temperature_ID); //disabling ambient_temperature ID
       timer.disable(soil_temperature_ID);// disabling soil temperature ID
@@ -206,6 +217,8 @@ BLYNK_WRITE(V7)//turn off switch
       timer.disable(turning_automation_ID);
       timer.disable(soil_temperature_automation_ID);
       timer.disable(soil_moisture_automation_ID);
+
+      timer.setTimeout(1000L, delete_input_sensor);
 
       turn_mode = 0; // for the first 12 days of turning
       alert_sent_turning[0] = 0;
@@ -366,7 +379,7 @@ void gas_sensor()
       if(Blynk.connected() != 0)
           {
       Serial.println("Methane gas detected");
-      Blynk.logEvent("info", String("Methane is detected. Mix your compost asap."));
+      Blynk.logEvent("gas", String("Methane is detected. Mix your compost asap."));
       gas_flag[0] = 0;
       gas_flag[1] = 1;
           }
@@ -420,6 +433,8 @@ void servo_motor(String temp1)
     Serial.println("Servo is close");
   }
 }
+
+
 
 void turning_automation()//should not be activated within the first day
 {
@@ -681,7 +696,7 @@ void soil_temperature_automation()
     }
     else if(soil_temperature_value < 32 )
     { 
-      if(soil_temperature_flag[2] == 0)
+       if(soil_temperature_flag[2] == 0)
       {
         if(Blynk.connected() != 0)
           {
@@ -771,7 +786,7 @@ void soil_temperature_automation()
 //int soil_humidity_flag[6]
 void soil_moisture_automation()
 {
-  if(soil_humidity_map < 40 )
+  if(soil_humidity_map < 80 )
   {
     if(soil_humidity_flag[0] == 0)
     {
@@ -785,23 +800,10 @@ void soil_moisture_automation()
    
     water_pump("on");
   }
-  else if(soil_humidity_map > 60)
+  else if(soil_humidity_map > 80)
   {
     //Turn your compost and add brown materials.
     //open vents
-    if(soil_humidity_flag[1] == 0)
-    {
-      Blynk.logEvent("soil_moisture", String("The moisture level is high. opening vents and turn compost. You may add brown or Carbon-rich materials"));
-       soil_humidity_flag[1] = 1;
-       soil_humidity_flag[0] = 0;
-       soil_humidity_flag[2] = 0; 
-    }
-    //open vents
-    Serial.println("Humidity level " + String(soil_humidity_map) );
-    water_pump("off");
-  }
-  else if(soil_humidity_map <= 60 && soil_humidity_map >= 40 )
-  {
     if(soil_humidity_flag[2] == 0)
     {
       Blynk.logEvent("soil_moisture", String("The moisture is in optimal level."));
@@ -809,9 +811,9 @@ void soil_moisture_automation()
     soil_humidity_flag[1] = 0;
     soil_humidity_flag[0] = 0;
     }
-    Serial.println("Optima Moisture " + String(soil_humidity_map) );
+    //open vents
+    Serial.println("Humidity level " + String(soil_humidity_map) );
     water_pump("off");
-    
   }
 }
 
@@ -923,7 +925,7 @@ void setup() {
   soil_moisture_automation_ID = timer.setInterval(2000L, soil_moisture_automation );
   reenable_ID = timer.setInterval(3600000L, reenable); //3600000 1 hour
   reconnect_ID = timer.setInterval(3000L, recon);
-  //timer.setInterval(300L, switchDC);
+  //delete_input_sensor_ID = timer.setInterval(2000L, delete_input_sensor);
 
   timer.setInterval(300L, shredder);
   Serial.begin(9600);
