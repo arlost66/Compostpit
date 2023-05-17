@@ -306,7 +306,7 @@ void soil_humidity() //check mapping
   //turn off ang sensor kung possible
   soil_humidity_value = analogRead(soil_humidity_pin);
   Serial.println(soil_humidity_value);
-  soil_humidity_map = map(soil_humidity_value, 629, 1023, 100,0);
+  soil_humidity_map = map(soil_humidity_value, 750, 1023, 100,0);
   if(Blynk.connected() != 0)
           {
            Blynk.virtualWrite(V2, soil_humidity_map);
@@ -444,21 +444,15 @@ void turning_automation()//should not be activated within the first day
  // Serial.println("Starting Time: " + String(startingTime) + "\n PHTIME: " + String((long long int)now()));
   if(startingTime + (86400 * 1) >= (long long int)now() && turn_mode == 0)
   {
-    if(soil_humidity_map >= 40 || soil_humidity_map < 60  )
+    if(soil_humidity_map >= 70   )//|| soil_humidity_map < 60
     { //86400 == 1 day seconds
       turn_mode = 1;
       Serial.println("Turn_mode = 1");
     }
-    else if(soil_humidity_map >= 60 || soil_humidity_map < 70)
+    else if(soil_humidity_map < 70)//soil_humidity_map >= 60 || 
     {
       turn_mode = 2;
       Serial.println("Turn_mode = 2");
-    }
-    else if( soil_humidity_map < 40)
-    {
-      //activate water pump
-      //Serial.println("Activate water pump before setting turn mode into 1;");
-      turn_mode = 1;
     }
   }
   Serial.println("Turn_mode = " + String(turn_mode));
@@ -786,7 +780,7 @@ void soil_temperature_automation()
 //int soil_humidity_flag[6]
 void soil_moisture_automation()
 {
-  if(soil_humidity_map < 80 )
+  if(soil_humidity_map < 70 )
   {
     if(soil_humidity_flag[0] == 0)
     {
@@ -800,7 +794,7 @@ void soil_moisture_automation()
    
     water_pump("on");
   }
-  else if(soil_humidity_map > 80)
+  else if(soil_humidity_map > 70)
   {
     //Turn your compost and add brown materials.
     //open vents
